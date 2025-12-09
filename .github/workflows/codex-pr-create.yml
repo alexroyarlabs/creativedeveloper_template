@@ -1,0 +1,90 @@
+name: Codex Pull Request Created
+
+on:
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codex-pr-created:
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY_NAME: ${{ github.event.repository.name }}
+      FRONTEND_ENV: ${{ format('{0}-dev-frontend', github.event.repository.name) }}
+      BACKEND_ENV: ${{ format('{0}-dev-backend', github.event.repository.name) }}
+      INFRA_ENV: ${{ format('{0}-dev-infra', github.event.repository.name) }}
+    steps:
+      - name: Checkout pull request branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js (Codex CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # - name: Install AWS CLI
+      #   run: |
+      #     set -euo pipefail
+      #     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      #     unzip awscliv2.zip
+      #     sudo ./aws/install
+
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex
+
+      - name: Check frontend stack exists
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        id: frontend_stack
+        run: |
+          set -euo pipefail
+          STACK_NAME="${FRONTEND_ENV}"
+
+          if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].StackStatus' --output text > /tmp/stack_status.txt 2>/tmp/stack_error.log; then
+            STATUS=$(cat /tmp/stack_status.txt)
+            echo "Found CloudFormation stack '$STACK_NAME' with status: $STATUS"
+            echo "stack_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            ERROR_MSG=$(cat /tmp/stack_error.log)
+            if echo "$ERROR_MSG" | grep -qi "does not exist"; then
+              echo "No CloudFormation stack found with name '$STACK_NAME'."
+              echo "stack_exists=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "$ERROR_MSG" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Generate frontend stack code with Codex
+        if: steps.frontend_stack.outputs.stack_exists != 'true'
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          set -euo pipefail
+
+          cat <<EOF > /tmp/codex-instructions.txt
+          Task: Create the necessary stack code for the frontend.
+
+          Follow repository routing rules in AGENTS.md (root) and infra/frontend/AGENTS.md.
+          - Work only under infra/frontend/.
+          - Produce a SAM template (YAML) for CloudFront + S3 that matches infra/frontend/AGENTS.md requirements.
+          - Use stack name ${FRONTEND_ENV} and environment dev.
+          - Make all changes in English.
+          - Deploy the stack using aws cli
+          EOF
+
+          cat /tmp/codex-instructions.txt | codex exec --sandbox workspace-write --model gpt-5.1-codex-max
