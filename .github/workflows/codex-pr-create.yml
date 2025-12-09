@@ -13,9 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REPOSITORY_NAME: ${{ github.event.repository.name }}
-      FRONTEND_ENV: ${{ format('{0}-dev-frontend', github.event.repository.name) }}
-      BACKEND_ENV: ${{ format('{0}-dev-backend', github.event.repository.name) }}
-      INFRA_ENV: ${{ format('{0}-dev-infra', github.event.repository.name) }}
     steps:
       - name: Checkout pull request branch
         uses: actions/checkout@v4
@@ -30,15 +27,27 @@ jobs:
         with:
           node-version: 20
 
-      # - name: Install AWS CLI
-      #   run: |
-      #     set -euo pipefail
-      #     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-      #     unzip awscliv2.zip
-      #     sudo ./aws/install
-
       - name: Install Codex CLI
         run: npm install -g @openai/codex
+
+      - name: Normalize stack names
+        run: |
+          set -euo pipefail
+
+          sanitize() {
+            local raw="$1"
+            local sanitized
+            sanitized=$(echo "$raw" | sed 's/[^A-Za-z0-9-]/-/g')
+            if [ -z "$sanitized" ] || ! echo "${sanitized:0:1}" | grep -Eq '[A-Za-z]'; then
+              sanitized="a${sanitized}"
+            fi
+            echo "$sanitized"
+          }
+
+          BASE_NAME=$(sanitize "${REPOSITORY_NAME}")
+          echo "FRONTEND_ENV=${BASE_NAME}-dev-frontend" >> "$GITHUB_ENV"
+          echo "BACKEND_ENV=${BASE_NAME}-dev-backend" >> "$GITHUB_ENV"
+          echo "INFRA_ENV=${BASE_NAME}-dev-infra" >> "$GITHUB_ENV"
 
       - name: Check frontend stack exists
         env:
