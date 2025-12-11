@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Characters Counter</title>
+  <style>
+    :root {
+      --bg: #0b1021;
+      --panel: #0f172a;
+      --accent: #38bdf8;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.08);
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 25% 20%, rgba(56, 189, 248, 0.1), transparent 25%), radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.08), transparent 20%), linear-gradient(160deg, #0b1021 0%, #0a0f1f 35%, #0b1021 100%);
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+    }
+
+    main {
+      width: min(900px, 100%);
+    }
+
+    .shell {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.02);
+      padding: clamp(1.5rem, 2vw + 1rem, 2.5rem);
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      font-size: clamp(1.8rem, 1rem + 1vw, 2.2rem);
+      margin: 0;
+      letter-spacing: 0.4px;
+    }
+
+    .subtitle {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+      max-width: 62ch;
+      line-height: 1.6;
+    }
+
+    .pill {
+      padding: 0.55rem 0.9rem;
+      background: rgba(56, 189, 248, 0.08);
+      color: var(--accent);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+      color: var(--text);
+      letter-spacing: 0.15px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 1rem 1.1rem;
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    textarea:focus {
+      border-color: rgba(56, 189, 248, 0.7);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+    }
+
+    .panel {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .counter {
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .counter strong {
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    button {
+      border: none;
+      padding: 0.65rem 1rem;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 160ms ease, background 160ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #021024;
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 36px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.04);
+      transform: translateY(-1px);
+    }
+
+    .warning {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 1.2rem;
+      }
+
+      .footer {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="shell" aria-label="Characters counter">
+      <header>
+        <div>
+          <p class="pill" aria-label="Utility label">Text utility</p>
+          <h1 class="title">Characters Counter</h1>
+          <p class="subtitle">
+            Type or paste your text into the field below to see a live count of characters. This helps you stay on target for
+            social posts, abstracts, or any input with a limit.
+          </p>
+        </div>
+        <div class="counter" aria-live="polite">
+          <strong id="charCount">0</strong> / <span id="maxCount">280</span> characters
+        </div>
+      </header>
+
+      <div class="panel">
+        <label for="textInput">Your text</label>
+        <textarea id="textInput" name="textInput" placeholder="Start typing to see the character count..." maxlength="280"></textarea>
+      </div>
+
+      <div class="footer">
+        <div class="counter" id="remaining" aria-live="polite">Remaining: <strong>280</strong></div>
+        <div class="actions">
+          <button type="button" class="btn-ghost" id="clearBtn">Clear</button>
+          <button type="button" class="btn-primary" id="copyBtn">Copy text</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const textarea = document.getElementById("textInput");
+    const charCount = document.getElementById("charCount");
+    const maxCount = document.getElementById("maxCount");
+    const remaining = document.getElementById("remaining").querySelector("strong");
+    const clearBtn = document.getElementById("clearBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const maxLength = parseInt(maxCount.textContent, 10);
+
+    const updateCounts = () => {
+      const length = textarea.value.length;
+      charCount.textContent = length;
+      remaining.textContent = Math.max(maxLength - length, 0);
+      const isOver = length > maxLength;
+      charCount.classList.toggle("warning", isOver);
+      remaining.parentElement.classList.toggle("warning", isOver);
+    };
+
+    textarea.addEventListener("input", updateCounts);
+
+    clearBtn.addEventListener("click", () => {
+      textarea.value = "";
+      updateCounts();
+      textarea.focus();
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const text = textarea.value;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = "Copy text"), 900);
+      } catch (err) {
+        copyBtn.textContent = "Unable to copy";
+        setTimeout(() => (copyBtn.textContent = "Copy text"), 1200);
+      }
+    });
+
+    updateCounts();
+  </script>
+</body>
+</html>
