@@ -50,12 +50,16 @@ jobs:
           echo "BACKEND_ENV=${BASE_NAME}-dev-backend" >> "$GITHUB_ENV"
           echo "INFRA_ENV=${BASE_NAME}-dev-infra" >> "$GITHUB_ENV"
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Check frontend stack exists
         env:
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
         id: frontend_stack
         run: |
           set -euo pipefail
@@ -80,9 +84,6 @@ jobs:
         if: steps.frontend_stack.outputs.stack_exists != 'true'
         env:
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           set -euo pipefail
 
