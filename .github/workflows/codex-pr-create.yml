@@ -2,7 +2,7 @@ name: Codex Pull Request Created
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, labeled]
   workflow_dispatch:
 
 permissions:
@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   codex-pr-created:
+    if: (github.event.action == 'opened' && contains(github.event.pull_request.labels.*.name, 'codex')) || (github.event.action == 'labeled' && github.event.label.name == 'codex')
     runs-on: ubuntu-latest
     env:
       REPOSITORY_NAME: ${{ github.event.repository.name }}
