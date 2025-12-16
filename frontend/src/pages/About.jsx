@@ -17,11 +17,11 @@ export default function About() {
             <p className="text-slate-400 leading-relaxed mb-4">
               CharacterCounter was built to help writers, developers, and content creators 
               understand and optimize their text. We believe that better analysis leads to 
-              better content, and we're committed to providing the most accurate and useful 
+              better content, and we&apos;re committed to providing the most accurate and useful 
               text metrics available.
             </p>
             <p className="text-slate-400 leading-relaxed">
-              Whether you're writing documentation, crafting marketing copy, or creating 
+              Whether you&apos;re writing documentation, crafting marketing copy, or creating 
               social media posts, CharacterCounter gives you the insights you need to make 
               your content shine.
             </p>
