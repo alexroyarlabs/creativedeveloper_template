@@ -12,8 +12,6 @@ jobs:
   codex-pr-created:
     if: (github.event.action == 'opened' && contains(github.event.pull_request.labels.*.name, 'codex')) || (github.event.action == 'labeled' && github.event.label.name == 'codex')
     runs-on: ubuntu-latest
-    env:
-      REPOSITORY_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Checkout pull request branch
         uses: actions/checkout@v4
@@ -23,32 +21,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js (Codex CLI)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install Codex CLI
-        run: npm install -g @openai/codex
-
-      - name: Normalize stack names
-        run: |
-          set -euo pipefail
-
-          sanitize() {
-            local raw="$1"
-            local sanitized
-            sanitized=$(echo "$raw" | sed 's/[^A-Za-z0-9-]/-/g')
-            if [ -z "$sanitized" ] || ! echo "${sanitized:0:1}" | grep -Eq '[A-Za-z]'; then
-              sanitized="a${sanitized}"
-            fi
-            echo "$sanitized"
-          }
-
-          BASE_NAME=$(sanitize "${REPOSITORY_NAME}")
-          echo "FRONTEND_ENV=${BASE_NAME}-dev-frontend" >> "$GITHUB_ENV"
-          echo "BACKEND_ENV=${BASE_NAME}-dev-backend" >> "$GITHUB_ENV"
-          echo "INFRA_ENV=${BASE_NAME}-dev-infra" >> "$GITHUB_ENV"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,48 +33,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Check frontend stack exists
-        env:
-          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-        id: frontend_stack
+      - name: Install frontend dependencies
+        working-directory: frontend
         run: |
           set -euo pipefail
-          STACK_NAME="${FRONTEND_ENV}"
-
-          if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].StackStatus' --output text > /tmp/stack_status.txt 2>/tmp/stack_error.log; then
-            STATUS=$(cat /tmp/stack_status.txt)
-            echo "Found CloudFormation stack '$STACK_NAME' with status: $STATUS"
-            echo "stack_exists=true" >> "$GITHUB_OUTPUT"
+          if [ ! -f package.json ]; then
+            echo "frontend/package.json not found." >&2
+            exit 1
+          fi
+          if [ -f package-lock.json ]; then
+            npm ci
           else
-            ERROR_MSG=$(cat /tmp/stack_error.log)
-            if echo "$ERROR_MSG" | grep -qi "does not exist"; then
-              echo "No CloudFormation stack found with name '$STACK_NAME'."
-              echo "stack_exists=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "$ERROR_MSG" >&2
-              exit 1
-            fi
+            npm install
           fi
 
-      - name: Generate frontend stack code with Codex
-        if: steps.frontend_stack.outputs.stack_exists != 'true'
-        env:
-          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+      - name: Build frontend to dist
+        working-directory: frontend
         run: |
           set -euo pipefail
+          npm run build
 
-          cat <<EOF > /tmp/codex-instructions.txt
-          Task: Create the necessary stack code for the frontend.
-
-          Follow repository routing rules in AGENTS.md (root) and infra/frontend/AGENTS.md.
-          - Work only under infra/frontend/.
-          - Produce a SAM template (YAML) for CloudFront + S3 that matches infra/frontend/AGENTS.md requirements.
-          - Use stack name ${FRONTEND_ENV} and environment dev.
-          - Make all changes in English.
-          - Deploy the stack using aws cli
-          EOF
-
-          cat /tmp/codex-instructions.txt | codex exec --sandbox workspace-write --model gpt-5.1-codex-max
+      - name: Upload frontend dist to S3
+        run: |
+          set -euo pipefail
+          aws s3 sync frontend/dist s3://frontend_bucket_name/ --delete
